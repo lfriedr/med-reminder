@@ -10,6 +10,7 @@ const callRoutes = require("./routes/call");
 
 const app = express();
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Mount routes so server knows where to direct HTTP requests
 app.use("/api/call", callRoutes);

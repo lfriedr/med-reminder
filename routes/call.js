@@ -1,13 +1,13 @@
 /**
  * routes/call.js
  *
- * Route for making voice calls to patients
- * Logic for this route is in a controller function - triggerCall 
+ * Routes for handling voice calls to patients
+ * Logic for routes is in controller functions in callController.js
  */
 
 const express = require("express");
 const router = express.Router();
-const { triggerCall } = require("../controllers/callController");
+const { triggerCall, handleVoiceCall } = require("../controllers/callController");
 
 /**
  * POST /api/call
@@ -17,5 +17,14 @@ const { triggerCall } = require("../controllers/callController");
  * Expects JSON body { "phoneNumber": "+1234567890" }
  */
 router.post("/", triggerCall);
+
+/**
+ * POST /api/call/voice
+ * 
+ * Webhook endpoint triggered by Twilio when the patient answers the call
+ * Responds with TwiML medication reminder using TTS
+ */
+router.post("/voice", handleVoiceCall);
+
 
 module.exports = router;
