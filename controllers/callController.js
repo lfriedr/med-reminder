@@ -144,7 +144,7 @@ exports.handleCallStatus = async (req, res) => {
   // If voicemail rejected: send fallback SMS
   if ( CallStatus === "no-answer" || CallStatus === "busy" || CallStatus === "failed") {
     try {
-      await client.messages.create({
+      await client.messages.create({ // NEED TO TEST
         to: To,
         from: process.env.TWILIO_PHONE_NUMBER,
         body: "We tried to call you to confirm your medications, but couldn’t reach you. Please call us back or take your medications if you haven't yet."
@@ -155,4 +155,29 @@ exports.handleCallStatus = async (req, res) => {
     }
   }
   res.sendStatus(200);
+};
+
+/**
+ * Responds to patient-initiated incoming calls
+ * Replays the same TTS medication reminder message
+ */
+exports.handleIncomingCall = (req, res) => { // NEED TO TEST
+  console.log("Incoming call from:", req.body.From);
+
+  // Speak the medication reminder
+  const twiml = new twilio.twiml.VoiceResponse();
+  twiml.say(
+    "Hello, this is a reminder from your healthcare provider. Please confirm if you have taken your Aspirin, Cardivol, and Metformin today. After the beep, say yes or no.",
+    { voice: "alice", language: "en-US" }
+  );
+  // Record spoken response
+  twiml.record({
+    timeout: 5,
+    maxLength: 10,
+    action: `${BASE_URL}/api/call/webhook/recording`,
+    method: "POST",
+    playBeep: true
+  });
+  res.type("text/xml");
+  res.send(twiml.toString());
 };
