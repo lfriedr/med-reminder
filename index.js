@@ -12,7 +12,7 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Mount routes so server knows where to direct HTTP requests
+// Mount routes so server directs HTTP requests to routes/call.js
 app.use("/api/call", callRoutes);
 
 // Start Express server and listen for incoming requests

@@ -4,10 +4,9 @@
  * Routes for handling voice calls to patients
  * Logic for routes is in controller functions in callController.js
  */
-
 const express = require("express");
 const router = express.Router();
-const { triggerCall, handleVoiceCall } = require("../controllers/callController");
+const { triggerCall, handleVoiceCall, handleRecordingWebhook } = require("../controllers/callController");
 
 /**
  * POST /api/call
@@ -26,5 +25,12 @@ router.post("/", triggerCall);
  */
 router.post("/voice", handleVoiceCall);
 
+/**
+ * POST /api/call/webhook/recording
+ * 
+ * Webhook endpoint triggered by Twilio after recording the patient's response
+ * Receives the recording URL and sends it to Deepgram for transcription
+ */
+router.post("/webhook/recording", handleRecordingWebhook);
 
 module.exports = router;
