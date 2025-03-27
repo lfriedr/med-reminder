@@ -6,7 +6,7 @@
  */
 const express = require("express");
 const router = express.Router();
-const { triggerCall, handleVoiceCall, handleRecordingWebhook } = require("../controllers/callController");
+const { triggerCall, handleVoiceCall, handleRecording, handleCallStatus } = require("../controllers/callController");
 
 /**
  * POST /api/call
@@ -31,6 +31,15 @@ router.post("/voice", handleVoiceCall);
  * Webhook endpoint triggered by Twilio after recording the patient's response
  * Receives the recording URL and sends it to Deepgram for transcription
  */
-router.post("/webhook/recording", handleRecordingWebhook);
+router.post("/webhook/recording", handleRecording);
+
+/**
+ * POST /api/call/status
+ *
+ * Receive Twilio's status callback webhook after a call ends
+ * Passes call status data to the handleCallStatus controller function
+ */
+router.post("/status", handleCallStatus);
+
 
 module.exports = router;

@@ -31,6 +31,10 @@ exports.triggerCall = async (req, res) => {
       to: phoneNumber,
       from: process.env.TWILIO_PHONE_NUMBER,
       url: `${BASE_URL}/api/call/voice`,
+      statusCallback: `${BASE_URL}/api/call/status`,
+      statusCallbackMethod: "POST",
+      statusCallbackEvent: ["completed"],
+      machineDetection: 'DetectMessageEnd',
     });
     console.log(`Call initiated. SID: ${call.sid}`);
     // respond to API caller with call SID
@@ -75,7 +79,7 @@ exports.handleVoiceCall = (req, res) => {
  * Receives recorded audio (via Twilio webhook) after patient's response is captured 
  * Sends recording to Deepgram for transcription and logs result
  */
-exports.handleRecordingWebhook = async (req, res) => {
+exports.handleRecording = async (req, res) => {
   // console.log("Incoming recording webhook:", req.body); //TESTING
 
   // make sure Twilio sent a recording URL
@@ -127,4 +131,25 @@ exports.handleRecordingWebhook = async (req, res) => {
     console.error("Error handling recording:", error.message);
     res.sendStatus(500);
   }
+};
+
+/**
+ * If call not answered and voicemail rejected:
+ * sends a fallback SMS reminder to the patient
+ */
+exports.handleCallStatus = async (req, res) => {
+  // If voicemail rejected: send fallback SMS
+  if ( CallStatus === "no-answer" || CallStatus === "busy" || CallStatus === "failed") {
+    try {
+      await client.messages.create({
+        to: To,
+        from: process.env.TWILIO_PHONE_NUMBER,
+        body: "We tried to call you to confirm your medications, but couldn’t reach you. Please call us back or take your medications if you haven't yet."
+      });
+      console.log("Fallback SMS sent.");
+    } catch (err) {
+      console.error("Failed to send fallback SMS:", err.message);
+    }
+  }
+  res.sendStatus(200);
 };
