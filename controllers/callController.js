@@ -138,6 +138,9 @@ exports.handleRecording = async (req, res) => {
  * sends a fallback SMS reminder to the patient
  */
 exports.handleCallStatus = async (req, res) => {
+  const { CallStatus, To } = req.body;
+  console.log("Call Status:", CallStatus);
+
   // If voicemail rejected: send fallback SMS
   if ( CallStatus === "no-answer" || CallStatus === "busy" || CallStatus === "failed") {
     try {
