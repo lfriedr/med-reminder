@@ -46,6 +46,11 @@ DEEPGRAM_API_KEY=your_deepgram_api_key
 RECORDING_WEBHOOK_URL=https://your-ngrok-subdomain.ngrok-free.app
 ```
 
+> **Get your API keys:**
+>
+> - Sign in to the [Twilio Console](https://www.twilio.com/console) to find your **Account SID**, **Auth Token**, and purchase a **Twilio phone number** that supports voice.
+> - Create a [Deepgram account](https://console.deepgram.com/signup) to get your **API key** for transcription.
+
 
 ## How to Run Locally
 
@@ -105,7 +110,6 @@ You can use Postman or curl to send this request.
 While your server is running, logs will display:
 
 - When calls are triggered
-- Incoming Twilio webhook requests
 - Deepgram transcriptions
 - Fallback SMS activity
 - Any errors or warnings
@@ -113,12 +117,34 @@ While your server is running, logs will display:
 Example:
 ```
 Call initiated. SID: CAxxxxxxxxxxxxxxxxxxxxxxx
-Incoming recording webhook...
 Transcription for Call SID CAxxxxxxxx: Yes, I took my medications.
 ```
 
 
-## Additional Endpoints
+## How It Works
+```md
+1. When the `/api/call` endpoint is hit, Twilio makes a call to the patient's phone.
+2. If the call is answered by a human, the system speaks a medication reminder using Twilio TTS and records the response.
+3. If the call goes to voicemail, the system waits for the beep and leaves a short voicemail message.
+4. Once a patient response is recorded, it is transcribed using Deepgram STT.
+5. If the call fails or is rejected, the system sends a fallback SMS.
+6. Patients can also call back, and the system will replay the reminder and re-record their response.
+```
+
+
+## API Endpoints
+- `POST /api/call`  
+  Triggers an outgoing call to the provided phone number.
+  
+  **Body:**
+  ```json
+  {
+    "phoneNumber": "+1234567890"
+  }
+  ```
+
+- `POST /api/call/voice`  
+  Called by Twilio when a call is answered. Responds with TTS and records patient response. Leaves voicemail if a machine answers.
 
 - `POST /api/call/status`  
   Handles Twilio status callback and sends fallback SMS
@@ -128,6 +154,4 @@ Transcription for Call SID CAxxxxxxxx: Yes, I took my medications.
 
 - `POST /api/call/incoming`  
   Responds to patient-initiated calls with a reminder and recording
-
-- `GET /api/call/logs`  
-  Returns stored call logs if connected to a database
+  
