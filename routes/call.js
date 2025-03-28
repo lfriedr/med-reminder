@@ -9,6 +9,7 @@ const router = express.Router();
 const { triggerCall, handleVoiceCall, handleRecording, 
         handleCallStatus, handleIncomingCall } = require("../controllers/callController");
 
+
 /**
  * POST /api/call
  * 
@@ -23,6 +24,7 @@ router.post("/", triggerCall);
  * 
  * Webhook endpoint triggered by Twilio when the patient answers the call
  * Responds with TwiML medication reminder using TTS
+ * If patient doesn't answer: responds with voicemail
  */
 router.post("/voice", handleVoiceCall);
 
@@ -49,5 +51,6 @@ router.post("/status", handleCallStatus);
  * Responds with a TTS medication reminder and records patient's voice response
  */
 router.post("/incoming", handleIncomingCall);
+
 
 module.exports = router;

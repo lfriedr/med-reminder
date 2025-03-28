@@ -4,7 +4,6 @@
  * Controller functions for handling voice call logic using Twilio API
  * Includes input validation, error handling, and logging
  */
-
 const axios = require("axios");
 const twilio = require("twilio");
 
@@ -14,13 +13,13 @@ const client = twilio(accountSid, authToken);
 const BASE_URL = process.env.RECORDING_WEBHOOK_URL;
 
 /**
+ * Logic for POST /api/call
  * Initiates a voice call to a patient using the Twilio API
  * Expects a phone number in the request body
  */
 exports.triggerCall = async (req, res) => {
-  // get phone # from request body
+  // get phone # from request body & validate
   const { phoneNumber } = req.body;
-  // validate input
   if (!phoneNumber) {
     return res.status(400).json({ error: "Phone number is required" });
   }
@@ -37,7 +36,7 @@ exports.triggerCall = async (req, res) => {
       machineDetection: 'DetectMessageEnd',
     });
     console.log(`Call initiated. SID: ${call.sid}`);
-    // respond to API caller with call SID
+    // respond to API call with call SID
     res.status(200).json({ message: "Call initiated", sid: call.sid });
   } 
   catch (error) {
@@ -47,54 +46,59 @@ exports.triggerCall = async (req, res) => {
 };
 
 /**
+ * Logic for POST /api/call/voice 
  * Responds to Twilio's webhook when the patient answers the call.
  * Uses TTS to play a medication reminder and records the patient's response.
  */
 exports.handleVoiceCall = (req, res) => {
+  const { AnsweredBy } = req.body;
+
   // Create TwiML voice response
   const twiml = new twilio.twiml.VoiceResponse();
 
-  // Read message aloud using Twilio's built-in TTS
-  twiml.say(
-    "Hello, this is a reminder from your healthcare provider. Please confirm if you have taken your Aspirin, Cardivol, and Metformin today. After the beep, say yes or no.",
-    // "After the beep, say yes or no.", //TESTING
-    { voice: "alice", language: "en-US" }
-  );
-  // Record patient's response after message
-  twiml.record({
-    timeout: 5,
-    maxLength: 10, //10 sec response 
-    action: `${BASE_URL}/api/call/webhook/recording`,
-    method: "POST",
-    playBeep: true
-  });
-
+  // Caller Doesn't Answer: leave voicemail
+  if (AnsweredBy === 'machine_end_beep' || AnsweredBy === 'machine_end_other') {
+    twiml.say(
+      { voice: 'alice' },
+      'We called to check on your medication but couldn’t reach you. Please call us back or take your medications if you haven’t done so.'
+    );
+  }
+  else { // Caller Answers:
+    // Read message aloud using Twilio's built-in TTS
+    twiml.say(
+      "Hello, this is a reminder from your healthcare provider. Please confirm if you have taken your Aspirin, Cardivol, and Metformin today. After the beep, say yes or no.",
+      { voice: "alice", language: "en-US" }
+    );
+    // Record patient's response after message
+    twiml.record({
+      timeout: 5,
+      maxLength: 10,
+      action: `${BASE_URL}/api/call/webhook/recording`,
+      method: "POST",
+      playBeep: true
+    });
+  }
   // Send TwiML back to Twilio
   res.type("text/xml");
   res.send(twiml.toString());
 };
 
-
 /**
+ * Logic for POST /api/call/webhook/recording 
  * Receives recorded audio (via Twilio webhook) after patient's response is captured 
  * Sends recording to Deepgram for transcription and logs result
  */
 exports.handleRecording = async (req, res) => {
-  // console.log("Incoming recording webhook:", req.body); //TESTING
-
   // make sure Twilio sent a recording URL
   const { RecordingUrl, CallSid } = req.body;
   if (!RecordingUrl) {
     console.error("No recording URL received.");
     return res.sendStatus(400);
   }
-  // console.log("RecordingUrl: ", RecordingUrl); //TESTING
-
   // Download & send recording to Deepgram for transcription
   try {
     // Give Twilio time to finalize recording file
     await new Promise(resolve => setTimeout(resolve, 3000));
-
     // Download recording from Twilio using basic auth
     const twilioResponse = await axios.get(RecordingUrl, {
       auth: {
@@ -104,8 +108,7 @@ exports.handleRecording = async (req, res) => {
       responseType: "arraybuffer"
     });
     console.log("Success downloading from Twilio");
-
-    // Send audio buffer to Deepgram
+    // Send to Deepgram
     const deepgramResponse = await axios.post(
       "https://api.deepgram.com/v1/listen",
       twilioResponse.data,
@@ -116,12 +119,10 @@ exports.handleRecording = async (req, res) => {
         }
       }
     );
-
-    // extract transcription result
+    // Extract transcription result
     const transcript = deepgramResponse.data.results.channels[0].alternatives[0].transcript;
     console.log(`Transcription for Call SID ${CallSid}: ${transcript}`);
-
-    // say bye and hang up
+    // Say bye and hang up
     const twiml = new twilio.twiml.VoiceResponse();
     twiml.say("Thank you. Goodbye.");
     res.type("text/xml");
@@ -134,17 +135,18 @@ exports.handleRecording = async (req, res) => {
 };
 
 /**
+ * Logic for POST /api/call/status
  * If call not answered and voicemail rejected:
  * sends a fallback SMS reminder to the patient
  */
 exports.handleCallStatus = async (req, res) => {
-  const { CallStatus, To } = req.body;
-  console.log("Call Status:", CallStatus);
+  const { AnsweredBy, CallStatus, To } = req.body;
+  console.log(`Call status: ${CallStatus}, Answered by: ${AnsweredBy}`);
 
   // If voicemail rejected: send fallback SMS
   if ( CallStatus === "no-answer" || CallStatus === "busy" || CallStatus === "failed") {
     try {
-      await client.messages.create({ // NEED TO TEST
+      await client.messages.create({ // TEST
         to: To,
         from: process.env.TWILIO_PHONE_NUMBER,
         body: "We tried to call you to confirm your medications, but couldn’t reach you. Please call us back or take your medications if you haven't yet."
@@ -158,10 +160,11 @@ exports.handleCallStatus = async (req, res) => {
 };
 
 /**
+ * Logic for POST /api/call/incoming
  * Responds to patient-initiated incoming calls
  * Replays the same TTS medication reminder message
  */
-exports.handleIncomingCall = (req, res) => { // NEED TO TEST
+exports.handleIncomingCall = (req, res) => { // TEST
   console.log("Incoming call from:", req.body.From);
 
   // Speak the medication reminder
