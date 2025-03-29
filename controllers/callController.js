@@ -6,13 +6,22 @@
  */
 const axios = require("axios");
 const twilio = require("twilio");
+const CallLog = require("../models/CallLog");
+const axiosRetry = require("axios-retry").default;
 
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
 const client = twilio(accountSid, authToken);
 const BASE_URL = process.env.RECORDING_WEBHOOK_URL;
-const CallLog = require("../models/CallLog");
 
+// Enable axios retry logic
+axiosRetry(axios, {
+  retries: 3,
+  retryDelay: axiosRetry.exponentialDelay,
+  retryCondition: (error) => {
+    return error.response?.status >= 500 || error.code === 'ECONNABORTED';
+  }
+});
 
 /**
  * Logic for POST /api/call
@@ -23,7 +32,7 @@ exports.triggerCall = async (req, res) => {
   // get phone # from request body & validate
   const { phoneNumber } = req.body;
   if (!phoneNumber) {
-    return res.status(400).json({ error: "Phone number is required" });
+    next(err);
   }
   // Try to Make Call:
   try {
@@ -43,7 +52,7 @@ exports.triggerCall = async (req, res) => {
   } 
   catch (error) {
     console.error("Error initiating call:", error);
-    res.status(500).json({ error: "Failed to initiate call" });
+    next(err);
   }
 };
 
@@ -156,7 +165,6 @@ exports.handleRecording = async (req, res) => {
  * sends a fallback SMS reminder to the patient
  */
 exports.handleCallStatus = async (req, res) => {
-  // const { AnsweredBy, CallStatus, To } = req.body;
   const { CallSid, To, From, CallStatus, AnsweredBy, Duration } = req.body;
 
   console.log(`Call status: ${CallStatus}, Answered by: ${AnsweredBy}`);
@@ -233,6 +241,6 @@ exports.getAllLogs = async (req, res) => {
     const logs = await CallLog.find().sort({ timestamp: -1 });
     res.json(logs);
   } catch (err) {
-    res.status(500).json({ error: "Failed to fetch logs." });
+    next(err);
   }
 };

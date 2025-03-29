@@ -55,8 +55,8 @@ router.post("/incoming", handleIncomingCall);
 /**
  * GET /api/call/logs
  *
- * Retrieve all stored call logs from the database.
- * For viewing past call attempts, recordings, and transcriptions.
+ * Retrieve all stored call logs from the database
+ * For viewing past call attempts, recordings, and transcriptions
  */
 router.get("/logs", getAllLogs);
 
