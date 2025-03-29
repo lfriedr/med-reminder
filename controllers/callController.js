@@ -11,6 +11,8 @@ const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
 const client = twilio(accountSid, authToken);
 const BASE_URL = process.env.RECORDING_WEBHOOK_URL;
+const CallLog = require("../models/CallLog");
+
 
 /**
  * Logic for POST /api/call
@@ -122,6 +124,20 @@ exports.handleRecording = async (req, res) => {
     // Extract transcription result
     const transcript = deepgramResponse.data.results.channels[0].alternatives[0].transcript;
     console.log(`Transcription for Call SID ${CallSid}: ${transcript}`);
+
+    // Update or create call log entry with recording + transcript
+    await CallLog.findOneAndUpdate(
+      { callSid: CallSid },
+      {
+        $set: {
+          recordingUrl: RecordingUrl,
+          transcription: transcript
+        }
+      },
+      { upsert: true, new: true }
+    );
+    console.log(`Call log updated or created for Call SID ${CallSid}`);
+
     // Say bye and hang up
     const twiml = new twilio.twiml.VoiceResponse();
     twiml.say("Thank you. Goodbye.");
@@ -140,8 +156,30 @@ exports.handleRecording = async (req, res) => {
  * sends a fallback SMS reminder to the patient
  */
 exports.handleCallStatus = async (req, res) => {
-  const { AnsweredBy, CallStatus, To } = req.body;
+  // const { AnsweredBy, CallStatus, To } = req.body;
+  const { CallSid, To, From, CallStatus, AnsweredBy, Duration } = req.body;
+
   console.log(`Call status: ${CallStatus}, Answered by: ${AnsweredBy}`);
+
+ // Log call
+  try {
+    await CallLog.findOneAndUpdate(
+      { callSid: CallSid },
+      {
+        $set: {
+          to: To,
+          from: From,
+          status: CallStatus,
+          answeredBy: AnsweredBy,
+          duration: Duration || "0",
+        }
+      },
+      { upsert: true, new: true }
+    );
+    console.log("Call log created or updated.");
+  } catch (err) {
+    console.error("Failed to upsert call log:", err.message);
+  }
 
   // If voicemail rejected: send fallback SMS
   if ( CallStatus === "no-answer" || CallStatus === "busy" || CallStatus === "failed") {
@@ -183,4 +221,18 @@ exports.handleIncomingCall = (req, res) => { // TEST
   });
   res.type("text/xml");
   res.send(twiml.toString());
+};
+
+/**
+ * Logic for GET /api/call/logs
+ * Fetches all stored call logs from the database 
+ * Returns logs in reverse chronological order
+ */
+exports.getAllLogs = async (req, res) => {
+  try {
+    const logs = await CallLog.find().sort({ timestamp: -1 });
+    res.json(logs);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch logs." });
+  }
 };

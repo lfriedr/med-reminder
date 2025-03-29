@@ -28,6 +28,11 @@ cd medication-reminder
 ```
 npm install
 ```
+Also install Mongoose for database integration:
+
+```
+npm install mongoose
+```
 
 ### 3. Create a `.env` file
 
@@ -44,12 +49,33 @@ TWILIO_AUTH_TOKEN=your_twilio_auth_token
 TWILIO_PHONE_NUMBER=+1234567890
 DEEPGRAM_API_KEY=your_deepgram_api_key
 RECORDING_WEBHOOK_URL=https://your-ngrok-subdomain.ngrok-free.app
+MONGODB_URI=mongodb://localhost:27017/medication-reminder
 ```
 
 > **Get your API keys:**
 >
 > - Sign in to the [Twilio Console](https://www.twilio.com/console) to find your **Account SID**, **Auth Token**, and purchase a **Twilio phone number** that supports voice.
 > - Create a [Deepgram account](https://console.deepgram.com/signup) to get your **API key** for transcription.
+
+### 4. MongoDB Setup
+
+Install MongoDB using [official docs](https://www.mongodb.com/docs/manual/installation/) or with Homebrew on macOS:
+
+```
+brew tap mongodb/brew
+brew install mongodb-community@7.0
+brew services start mongodb/brew/mongodb-community
+```
+
+### 5. Expose Your Local Server with Ngrok
+
+In a second terminal, run:
+
+```
+npx ngrok http 3000
+```
+
+Copy the generated HTTPS link and update your `.env` file's `RECORDING_WEBHOOK_URL`.
 
 
 ## How to Run Locally
@@ -63,17 +89,6 @@ Or, with automatic reload:
 ```
 npx nodemon index.js
 ```
-
-
-## Expose Your Local Server with Ngrok
-
-In a second terminal, run:
-
-```
-npx ngrok http 3000
-```
-
-Copy the generated HTTPS link and update your `.env` file's `RECORDING_WEBHOOK_URL`.
 
 
 ## Configure Twilio Webhooks
@@ -154,4 +169,57 @@ Transcription for Call SID CAxxxxxxxx: Yes, I took my medications.
 
 - `POST /api/call/incoming`  
   Responds to patient-initiated calls with a reminder and recording
-  
+
+- `GET /api/call/logs`
+ Returns stored call logs if connected to a database
+
+
+
+## Verify Database Logging Works (with Postman)
+
+### 1. Trigger a Test Call
+
+Open **Postman** and:
+
+- Set the request type to `POST`
+- URL:  
+  ```
+  http://localhost:3000/api/call
+  ```
+- Go to the **Body** tab → select **raw** → choose **JSON** from the dropdown
+- Paste the following JSON:
+
+```json
+{
+  "phoneNumber": "+1234567890"
+}
+```
+
+- Click **Send**
+
+You should see a `200 OK` response with a message and call SID.
+
+
+### 2. View Saved Call Logs
+
+#### Option A: Using Postman
+
+- Set the request type to `GET`
+- URL:  
+  ```
+  http://localhost:3000/api/call/logs
+  ```
+- Click **Send**
+- You’ll receive a JSON array of call logs, each with fields like:
+
+```json
+{
+  "callSid": "CAxxxxxxxxxxxxx",
+  "to": "+1234567890",
+  "from": "+19876543210",
+  "status": "completed",
+  "recordingUrl": "https://api.twilio.com/...",
+  "transcription": "yes I did",
+  "timestamp": "2025-03-29T19:22:00.123Z"
+}
+```

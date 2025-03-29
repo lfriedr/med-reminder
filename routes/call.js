@@ -7,7 +7,7 @@
 const express = require("express");
 const router = express.Router();
 const { triggerCall, handleVoiceCall, handleRecording, 
-        handleCallStatus, handleIncomingCall } = require("../controllers/callController");
+        handleCallStatus, handleIncomingCall, getAllLogs } = require("../controllers/callController");
 
 
 /**
@@ -51,6 +51,14 @@ router.post("/status", handleCallStatus);
  * Responds with a TTS medication reminder and records patient's voice response
  */
 router.post("/incoming", handleIncomingCall);
+
+/**
+ * GET /api/call/logs
+ *
+ * Retrieve all stored call logs from the database.
+ * For viewing past call attempts, recordings, and transcriptions.
+ */
+router.get("/logs", getAllLogs);
 
 
 module.exports = router;
