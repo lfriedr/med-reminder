@@ -170,9 +170,8 @@ Transcription for Call SID CAxxxxxxxx: Yes, I took my medications.
 - `POST /api/call/incoming`  
   Responds to patient-initiated calls with a reminder and recording
 
-- `GET /api/call/logs`
- Returns stored call logs if connected to a database
-
+- `GET /api/call/logs`  
+  Returns stored call logs if connected to a database
 
 
 ## Verify Database Logging Works (with Postman)
@@ -180,7 +179,6 @@ Transcription for Call SID CAxxxxxxxx: Yes, I took my medications.
 ### 1. Trigger a Test Call
 
 Open **Postman** and:
-
 - Set the request type to `POST`
 - URL:  
   ```
@@ -202,8 +200,6 @@ You should see a `200 OK` response with a message and call SID.
 
 ### 2. View Saved Call Logs
 
-#### Option A: Using Postman
-
 - Set the request type to `GET`
 - URL:  
   ```
@@ -223,3 +219,23 @@ You should see a `200 OK` response with a message and call SID.
   "timestamp": "2025-03-29T19:22:00.123Z"
 }
 ```
+
+
+## Run Tests
+
+This project uses **Jest** and **Supertest** to test the API endpoints.
+
+### To run the test suite:
+
+```bash
+npm test
+```
+
+You should see output like:
+
+```bash
+ PASS  __tests__/api.test.js
+ ✓ should return logs (200 ms)
+```
+
+This confirms the API is working and returns the expected data. Jest will exit when all tests pass.

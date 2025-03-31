@@ -11,8 +11,8 @@ const axiosRetry = require("axios-retry").default;
 
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
-const client = twilio(accountSid, authToken);
 const BASE_URL = process.env.RECORDING_WEBHOOK_URL;
+const client = twilio(accountSid, authToken);
 
 // Enable axios retry logic
 axiosRetry(axios, {
@@ -28,10 +28,12 @@ axiosRetry(axios, {
  * Initiates a voice call to a patient using the Twilio API
  * Expects a phone number in the request body
  */
-exports.triggerCall = async (req, res) => {
+exports.triggerCall = async (req, res, next) => {
   // get phone # from request body & validate
   const { phoneNumber } = req.body;
   if (!phoneNumber) {
+    const err = new Error("Phone number is required");
+    err.status = 400;
     next(err);
   }
   // Try to Make Call:
@@ -52,7 +54,7 @@ exports.triggerCall = async (req, res) => {
   } 
   catch (error) {
     console.error("Error initiating call:", error);
-    next(err);
+    next(error);
   }
 };
 
@@ -77,7 +79,7 @@ exports.handleVoiceCall = (req, res) => {
   else { // Caller Answers:
     // Read message aloud using Twilio's built-in TTS
     twiml.say(
-      "Hello, this is a reminder from your healthcare provider. Please confirm if you have taken your Aspirin, Cardivol, and Metformin today. After the beep, say yes or no.",
+      "Hello, this is a reminder from your healthcare provider to confirm your medications for the day. Please confirm if you have taken your Aspirin, Cardivol, and Metformin today. After the beep, say yes or no.",
       { voice: "alice", language: "en-US" }
     );
     // Record patient's response after message
@@ -192,10 +194,10 @@ exports.handleCallStatus = async (req, res) => {
   // If voicemail rejected: send fallback SMS
   if ( CallStatus === "no-answer" || CallStatus === "busy" || CallStatus === "failed") {
     try {
-      await client.messages.create({ // TEST
+      await client.messages.create({ 
         to: To,
         from: process.env.TWILIO_PHONE_NUMBER,
-        body: "We tried to call you to confirm your medications, but couldn’t reach you. Please call us back or take your medications if you haven't yet."
+        body: "We called to check on your medications but couldn’t reach you. Please call us back or take your medications if you haven't done so."
       });
       console.log("Fallback SMS sent.");
     } catch (err) {
@@ -210,7 +212,7 @@ exports.handleCallStatus = async (req, res) => {
  * Responds to patient-initiated incoming calls
  * Replays the same TTS medication reminder message
  */
-exports.handleIncomingCall = (req, res) => { // TEST
+exports.handleIncomingCall = (req, res) => { 
   console.log("Incoming call from:", req.body.From);
 
   // Speak the medication reminder
@@ -236,7 +238,7 @@ exports.handleIncomingCall = (req, res) => { // TEST
  * Fetches all stored call logs from the database 
  * Returns logs in reverse chronological order
  */
-exports.getAllLogs = async (req, res) => {
+exports.getAllLogs = async (req, res, next) => {
   try {
     const logs = await CallLog.find().sort({ timestamp: -1 });
     res.json(logs);

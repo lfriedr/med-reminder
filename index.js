@@ -21,14 +21,19 @@ mongoose.connect(process.env.MONGODB_URI)
 // Mount routes so server directs HTTP requests to routes/call.js
 app.use("/api/call", callRoutes);
 
-// Start Express server and listen for incoming requests
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
-
 // Global error handler
 app.use((err, req, res, next) => {
   console.error("Error:", err.stack);
-  res.status(500).json({ error: "Internal server error" });
+  res.status(err.status || 500).json({ error: err.message || "Internal server error" });
 });
+
+// Export app for testing
+module.exports = app;
+
+// Only start server if run directly
+if (require.main === module) {
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}

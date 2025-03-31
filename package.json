@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node index.js",
+    "test": "jest"
   },
   "keywords": [],
   "author": "",
@@ -14,7 +15,12 @@
     "axios-retry": "^4.5.0",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "jest-mock": "^29.7.0",
     "mongoose": "^8.13.1",
     "twilio": "^5.5.1"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "supertest": "^7.1.0"
   }
 }

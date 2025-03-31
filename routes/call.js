@@ -1,7 +1,7 @@
 /**
  * routes/call.js
  *
- * Routes for handling voice calls to patients
+ * Contains Express route definitions
  * Logic for routes is in controller functions in callController.js
  */
 const express = require("express");
